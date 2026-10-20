@@ -1,3 +1,4 @@
+from contextlib import closing
 import copy
 import io
 import json
@@ -168,7 +169,7 @@ class AnalysisPersistenceTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(self.store.backup())) as z:
             self.assertIn('data/quote-files/'+q['id']+'/'+q['attachments'][0]['file'],z.namelist())
             path=self.store.directory/'snapshot.sqlite3';path.write_bytes(z.read('data/ledger.sqlite3'))
-            with sqlite3.connect(path) as db:self.assertEqual(db.execute('SELECT count(*) FROM analysis_notes').fetchone()[0],1)
+            with closing(sqlite3.connect(path)) as db:self.assertEqual(db.execute('SELECT count(*) FROM analysis_notes').fetchone()[0],1)
         self.assertEqual(self.store.records(),self.original);self.assertEqual(csv_bytes(self.store.records(),self.store.suppliers()),self.export)
         with self.assertRaises(ValueError):self.a.save_note(r['id'],dict(fingerprint='stale',material_cost=1))
         self.a.void_quote(q['id']);self.assertFalse(next(r for r in self.a.query({'kind':'quote'})['observations'] if r['id']==q['id'])['eligible'])

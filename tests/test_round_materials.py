@@ -1,3 +1,4 @@
+from contextlib import closing
 import copy
 import csv
 import io
@@ -175,7 +176,7 @@ class RoundPersistenceTests(unittest.TestCase):
         self.assertEqual((item['dim_unit'],item['unit'],item['note']),('mm','件','人工備註'))
         self.assertEqual(self.store.document(confirmed)['draft']['items'][0]['unit'],'')
         backup=Path(self.temp.name)/'upgrade-backups/before-units-v2.sqlite3'
-        with sqlite3.connect(backup) as db:
+        with closing(sqlite3.connect(backup)) as db:
             old=json.loads(db.execute('SELECT draft FROM documents WHERE id=?',(self.identifier,)).fetchone()[0])
             self.assertEqual(old['items'][0]['unit'],'')
         snapshot=self.store.document(self.identifier)['draft'];self.store.upgrade_units()

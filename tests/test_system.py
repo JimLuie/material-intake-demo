@@ -1,3 +1,4 @@
+from contextlib import closing
 import copy
 import io
 import itertools
@@ -166,7 +167,7 @@ class PersistenceTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(backup)) as z:
             self.assertEqual(z.read(f'data/files/{self.identifier}/original.jpg'),b'fake test file')
             target=Path(self.temp.name)/'backup.sqlite3';target.write_bytes(z.read('data/ledger.sqlite3'))
-            with sqlite3.connect(target) as db:self.assertEqual(db.execute('SELECT count(*) FROM records').fetchone()[0],1)
+            with closing(sqlite3.connect(target)) as db:self.assertEqual(db.execute('SELECT count(*) FROM records').fetchone()[0],1)
 
     def test_csv_excel_formula_protection(self):
         data=draft();data['items'][0]['note']='=HYPERLINK("http://example.invalid")'

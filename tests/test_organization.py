@@ -1,3 +1,4 @@
+from contextlib import closing
 """Organization uses disposable data; no real document is moved by these tests."""
 import copy
 import io
@@ -140,7 +141,7 @@ class OrganizationTests(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(self.store.backup())) as archive:
             self.assertIn('data/files/'+self.id+'/original.jpg',archive.namelist())
             path=Path(self.tmp.name)/'snapshot.sqlite3';path.write_bytes(archive.read('data/ledger.sqlite3'))
-        with sqlite3.connect(path) as db:
+        with closing(sqlite3.connect(path)) as db:
             self.assertEqual(db.execute('SELECT COUNT(*) FROM records').fetchone()[0],1)
             self.assertEqual(db.execute('SELECT bucket,ledger_active FROM documents').fetchone(),('trash',0))
 
