@@ -7,7 +7,7 @@ import shutil
 import sqlite3
 import zipfile
 from urllib.parse import urlsplit, parse_qs, unquote
-from server import Store, csv_bytes, re_identifier, SerialLock, BrowserJobs
+from server import Store, csv_bytes, re_identifier, SerialLock, BrowserJobs, ClosingConnection
 from domain import search_materials, parse_ocr
 from taxation import draft_context
 from document_organization import guard_material, suggestion, OrganizationConflict
@@ -35,7 +35,7 @@ def reset_store():
 
 def snapshot_request(path, body_json='{}'):
     """Small database rollback plus only files a request can overwrite."""
-    with store.connect() as db, sqlite3.connect(':memory:') as target:
+    with store.connect() as db, sqlite3.connect(':memory:', factory=ClosingConnection) as target:
         db.backup(target); database=target.serialize()
     files=[str(p.relative_to(store.directory)) for p in store.directory.rglob('*') if p.is_file()]
     replaced={}
@@ -82,7 +82,7 @@ def file_versions():
     result={}
     for directory in ['files','quote-files']:
         for p in (store.directory/directory).rglob('*'):
-            if p.is_file(): result['/'+str(p.relative_to(store.directory))]=str(p.stat().st_mtime_ns)+':'+str(p.stat().st_size)
+            if p.is_file(): result['/'+p.relative_to(store.directory).as_posix()]=str(p.stat().st_mtime_ns)+':'+str(p.stat().st_size)
     return result
 
 def binary(data,mime,name='download'):
@@ -103,7 +103,7 @@ def restore_backup(content):
         import tempfile
         with tempfile.TemporaryDirectory() as temp:
             candidate=Path(temp)/'ledger.sqlite3';candidate.write_bytes(z.read('data/ledger.sqlite3'))
-            with sqlite3.connect(candidate) as db:
+            with sqlite3.connect(candidate, factory=ClosingConnection) as db:
                 if db.execute('PRAGMA integrity_check').fetchone()[0]!='ok': raise ValueError('備份資料庫損壞')
                 if not db.execute("SELECT 1 FROM settings WHERE key='demo:seed-v1'").fetchone(): raise ValueError('請使用此 Demo 匯出的備份')
                 for table in ['documents','records','analysis_notes','analysis_quotes','analysis_market','analysis_fx']:

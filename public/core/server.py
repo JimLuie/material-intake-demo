@@ -95,7 +95,7 @@ class Store:
                 backup = self.directory/'upgrade-backups'/'before-units-v2.sqlite3'
                 backup.parent.mkdir(exist_ok=True)
                 if not backup.exists():
-                    with sqlite3.connect(backup) as target:
+                    with sqlite3.connect(backup, factory=ClosingConnection) as target:
                         db.backup(target)
             for row in pending:
                 draft = default_units(json.loads(row['draft']))
@@ -306,7 +306,7 @@ class Store:
         # Consistent SQLite snapshot, including in-flight WAL transactions; no OCR writes during file enumeration.
         with self.lock, tempfile.TemporaryDirectory() as folder:
             snapshot = Path(folder)/"ledger.sqlite3"
-            with self.connect() as db, sqlite3.connect(snapshot) as target:
+            with self.connect() as db, sqlite3.connect(snapshot, factory=ClosingConnection) as target:
                 db.backup(target)
             output = io.BytesIO()
             with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -314,7 +314,7 @@ class Store:
                 for directory in ['files', 'quote-files']:
                     for source in sorted((self.directory/directory).rglob("*")):
                         if source.is_file():
-                            archive.write(source, "data/"+str(source.relative_to(self.directory)))
+                            archive.write(source, "data/"+source.relative_to(self.directory).as_posix())
                 archive.writestr("還原說明.txt", "在材料進料帳 Demo 左下角按「還原」，選擇此 ZIP。還原只會取代目前瀏覽器的 Demo 資料。請先保存現有備份。\n")
             return output.getvalue()
 
