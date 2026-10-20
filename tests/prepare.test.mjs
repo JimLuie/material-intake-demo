@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {mkdtemp,readFile,writeFile,rm,readdir} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import {downloadModel} from '../scripts/prepare-demo.mjs';
+test('a failed model download is retryable, atomic and checksum verified',async t=>{
+  const folder=await mkdtemp(path.join(os.tmpdir(),'material-model-'));t.after(()=>rm(folder,{recursive:true,force:true}));
+  const file=path.join(folder,'model.gz'),content=Buffer.from('trusted-model');
+  const model={url:'https://example.com/test-model.gz',sha256:createHash('sha256').update(content).digest('hex')};
+  await writeFile(file,'previous');
+  await assert.rejects(downloadModel(model,file,{fetchImpl:async()=>new Response('offline',{status:503})}),/下載失敗/);
+  assert.equal(await readFile(file,'utf8'),'previous');
+  await assert.rejects(downloadModel(model,file,{fetchImpl:async()=>new Response('corrupt')}),/校驗失敗/);
+  assert.equal(await readFile(file,'utf8'),'previous');
+  assert.equal(await downloadModel(model,file,{fetchImpl:async()=>new Response(content)}),true);
+  assert.equal(await readFile(file,'utf8'),'trusted-model');
+  assert.equal(await downloadModel(model,file,{fetchImpl:()=>{throw Error('warm start must not use the network');}}),false);
+  assert.deepEqual(await readdir(folder),['model.gz']);
+});

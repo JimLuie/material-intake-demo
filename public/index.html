@@ -1,0 +1,751 @@
+<!doctype html><html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>材料進料帳 · Demo</title><link rel="icon" href="/favicon.svg">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+</style>
+<link rel="stylesheet" href="local.css">
+<link rel="stylesheet" href="analysis.css">
+<style>
+/* Layout: graphite control rail + wide working sheet. The lookup view pairs a DRO-style readout with a CAD viewport that draws the stock block around the part. */
+/* Bundled Latin subsets (SIL OFL, fonts/OFL-*.txt) so the readouts render offline; CJK falls through to PingFang TC. */
+@font-face{font-family:"Barlow Condensed";font-weight:400;font-display:block;src:url(fonts/barlow-condensed-latin-400.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:500;font-display:block;src:url(fonts/barlow-condensed-latin-500.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:600;font-display:block;src:url(fonts/barlow-condensed-latin-600.woff2) format("woff2")}
+@font-face{font-family:"Barlow Condensed";font-weight:700;font-display:block;src:url(fonts/barlow-condensed-latin-700.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;font-display:block;src:url(fonts/ibm-plex-mono-latin-400.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:block;src:url(fonts/ibm-plex-mono-latin-500.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:600;font-display:block;src:url(fonts/ibm-plex-mono-latin-600.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:700;font-display:block;src:url(fonts/ibm-plex-mono-latin-700.woff2) format("woff2")}
+:root{
+  --paper:#ECEFF2; --sheet:#FFFFFF; --sheet-2:#F5F7F9;
+  --ink:#14202A; --ink-2:#4A5865; --ink-3:#636F7B;
+  --rule:#D6DCE2; --rule-2:#E7EBEF;
+  --layout:#2340D0; --layout-ink:#FFFFFF; --layout-soft:#E4E8FB; --layout-line:#AAB6EE;
+  --rail:#16202A; --rail-2:#222E39; --rail-fg:#E4EAEF; --rail-dim:#8B98A4; --rail-accent:#93A6FF; --rail-warn:#E8B65A;
+  --slip-hh:#C4E6E9; --slip-hh-ink:#145A65;
+  --slip-sk:#F3E99A; --slip-sk-ink:#5F5104;
+  --slip-zf:#F5C8E0; --slip-zf-ink:#7A2352;
+  --slip-zm:#CDEBB4; --slip-zm-ink:#365312;
+  --slip-xx:#E3E1F0; --slip-xx-ink:#4A4570;
+  --ok:#17805A; --ok-soft:#DCF1E7; --warn:#8A5208; --warn-soft:#F7EAD3; --bad:#BF392F; --bad-soft:#F8E0DC;
+  --iso-top:#EEF1F4; --iso-left:#CBD3DA; --iso-right:#B1BBC4; --iso-edge:#52606B;
+  --grid-line:rgba(20,32,42,.065);
+  --scrim:rgba(12,18,24,.42);
+  --img-filter:none;
+  --shadow:0 1px 2px rgba(20,32,42,.06),0 12px 32px -18px rgba(20,32,42,.32);
+  --shadow-sm:0 1px 2px rgba(20,32,42,.14);
+  --font-ui:"Noto Sans TC","PingFang TC","Heiti TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-display:"Barlow Condensed","Arial Narrow","PingFang TC","Noto Sans TC",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,"PingFang TC",monospace;
+  /* Type scale: 2xs is reserved for badges, pills and counters; running text starts at xs. */
+  --fs-2xs:11px; --fs-xs:12px; --fs-sm:13px; --fs-md:14px; --fs-lg:16px; --fs-xl:20px; --fs-2xl:24px; --fs-3xl:32px;
+  --r-sm:4px; --r:8px; --r-lg:12px;
+  --t:.15s ease;
+  --scan-bg:#FFFFFF; /* scanned slips stay on white paper in both themes */
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1419; --sheet:#151D24; --sheet-2:#1A232B;
+    --ink:#E4EAEF; --ink-2:#A7B3BD; --ink-3:#85929D;
+    --rule:#28333D; --rule-2:#202A33;
+    --layout:#7189FF; --layout-ink:#0B1020; --layout-soft:#1C244C; --layout-line:#3D4E9F;
+    --rail:#0A0F13; --rail-2:#18212A; --rail-fg:#E4EAEF; --rail-dim:#7E8B96; --rail-accent:#93A6FF;
+    --slip-hh:#173F46; --slip-hh-ink:#A6E4EC;
+    --slip-sk:#3F3A10; --slip-sk-ink:#EFDF7C;
+    --slip-zf:#4B1639; --slip-zf-ink:#F5B8D9;
+    --slip-zm:#274314; --slip-zm-ink:#C2E59A;
+    --slip-xx:#2A2843; --slip-xx-ink:#C9C4F0;
+    --ok:#4CC38E; --ok-soft:#12352A; --warn:#E3AB4E; --warn-soft:#3A2C12; --bad:#F07468; --bad-soft:#3D1A17;
+    --iso-top:#3B4752; --iso-left:#2C3640; --iso-right:#222B34; --iso-edge:#9CA9B5;
+    --grid-line:rgba(228,234,239,.05);
+    --scrim:rgba(0,0,0,.55);
+    --img-filter:brightness(.86) contrast(1.04);
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 32px -16px rgba(0,0,0,.65);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1419; --sheet:#151D24; --sheet-2:#1A232B;
+  --ink:#E4EAEF; --ink-2:#A7B3BD; --ink-3:#85929D;
+  --rule:#28333D; --rule-2:#202A33;
+  --layout:#7189FF; --layout-ink:#0B1020; --layout-soft:#1C244C; --layout-line:#3D4E9F;
+  --rail:#0A0F13; --rail-2:#18212A; --rail-fg:#E4EAEF; --rail-dim:#7E8B96; --rail-accent:#93A6FF;
+  --slip-hh:#173F46; --slip-hh-ink:#A6E4EC;
+  --slip-sk:#3F3A10; --slip-sk-ink:#EFDF7C;
+  --slip-zf:#4B1639; --slip-zf-ink:#F5B8D9;
+  --slip-zm:#274314; --slip-zm-ink:#C2E59A;
+  --slip-xx:#2A2843; --slip-xx-ink:#C9C4F0;
+  --ok:#4CC38E; --ok-soft:#12352A; --warn:#E3AB4E; --warn-soft:#3A2C12; --bad:#F07468; --bad-soft:#3D1A17;
+  --iso-top:#3B4752; --iso-left:#2C3640; --iso-right:#222B34; --iso-edge:#9CA9B5;
+  --grid-line:rgba(228,234,239,.05);
+  --scrim:rgba(0,0,0,.55);
+  --img-filter:brightness(.86) contrast(1.04);
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 32px -16px rgba(0,0,0,.65);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font-ui);font-size:var(--fs-md);line-height:1.6;-webkit-font-smoothing:antialiased}
+body.no-scroll{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+h1,h2,h3{text-wrap:balance}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.k{font-size:var(--fs-xs);color:var(--ink-3)}
+:focus-visible{outline:2px solid var(--layout);outline-offset:2px}
+::selection{background:var(--layout-soft)}
+/* One chevron for every disclosure instead of the browser's ▶/▼ glyphs. */
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"";display:inline-block;width:7px;height:7px;margin:0 10px 0 2px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;opacity:.65;transform:translateY(-2px) rotate(-45deg);transition:transform var(--t)}
+details[open]>summary::before{transform:translateY(-4px) rotate(45deg)}
+/* Sentence-length helper text stays at 13px or more; 12px is for short labels and metadata. */
+p.k{font-size:var(--fs-sm)}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:244px minmax(0,1fr);min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--rail);color:var(--rail-fg);display:flex;flex-direction:column;gap:30px;padding:24px 14px}
+.brand{display:flex;gap:12px;align-items:center;padding-inline:8px}
+.brand svg{width:34px;height:34px;flex:none}
+.brand-name{font-weight:900;font-size:var(--fs-xl);letter-spacing:.06em;line-height:1.25}
+.brand-sub{font-family:var(--font-display);font-weight:500;font-size:var(--fs-2xs);letter-spacing:.2em;color:var(--rail-dim);text-transform:uppercase;line-height:1.3}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-i{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r);color:var(--rail-dim);text-decoration:none;font-weight:500;font-size:var(--fs-md);white-space:nowrap}
+.nav-i svg{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.nav-i:hover{color:var(--rail-fg);background:var(--rail-2)}
+.nav-i.is-on{color:var(--rail-fg);background:var(--rail-2)}
+.nav-i.is-on svg{color:var(--rail-accent)}
+.nav-i .count,.nav-i kbd{margin-left:auto;font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--rail-dim)}
+.nav-i kbd{border:1px solid var(--rail-2);border-radius:var(--r-sm);padding:0 6px;line-height:18px}
+.nav-i .count.is-warn{color:var(--rail);background:var(--rail-warn);border-radius:999px;padding:0 7px;font-weight:600;line-height:18px}
+.nav-i .count:empty{display:none}
+.rail-foot{margin-top:auto;padding:14px 12px;border-top:1px solid var(--rail-2);display:flex;flex-direction:column;gap:10px}
+.rf-title{font-family:var(--font-display);letter-spacing:.2em;font-size:var(--fs-2xs);color:var(--rail-dim);text-transform:uppercase}
+.rf-dl{display:grid;grid-template-columns:1fr auto;gap:4px 12px;margin:0;font-size:var(--fs-sm)}
+.rf-dl dt{color:var(--rail-dim)}
+.rf-dl dd{margin:0;font-family:var(--font-mono);text-align:right}
+.rf-note{margin:0;font-size:var(--fs-xs);color:var(--rail-dim);line-height:1.55}
+
+.main{padding-block:36px 80px;padding-inline:40px;min-width:0}
+.view{max-width:1220px;margin-inline:auto;display:flex;flex-direction:column;gap:22px}
+.vhead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.vhead > div:first-child{min-width:0;flex:1 1 420px}
+.eyebrow{font-family:var(--font-display);font-weight:600;letter-spacing:.2em;font-size:var(--fs-sm);color:var(--layout);text-transform:uppercase}
+.vhead h1{font-size:clamp(var(--fs-2xl),3.1vw,var(--fs-3xl));font-weight:900;letter-spacing:.03em;margin:4px 0 6px;line-height:1.25}
+.vhead p{margin:0;color:var(--ink-2);max-width:62ch}
+.vhead-act{display:flex;gap:10px;flex-wrap:wrap}
+.panel{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r-lg);min-width:0}
+.notice{display:flex;gap:10px;align-items:flex-start;font-size:var(--fs-sm);color:var(--ink-2);background:var(--sheet-2);border:1px dashed var(--rule);border-radius:var(--r);padding:8px 12px}
+.notice svg{flex:none;width:16px;height:16px;margin-top:2px;fill:none;stroke:var(--ink-3);stroke-width:1.6}
+
+/* ---------- controls ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:38px;padding:0 16px;border-radius:var(--r);border:1px solid var(--rule);background:var(--sheet);font-weight:500;cursor:pointer;white-space:nowrap;text-decoration:none;color:var(--ink)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.btn:hover{border-color:var(--ink-3)}
+.btn-primary{background:var(--layout);border-color:var(--layout);color:var(--layout-ink);font-weight:700}
+.btn-primary:hover{border-color:var(--layout);filter:brightness(1.08)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn-ghost:hover{border-color:transparent;background:var(--sheet-2);color:var(--ink)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn:disabled:hover{border-color:var(--rule)}
+/* A disabled primary reads as "not yet", not as a washed-out accent. */
+.btn-primary:disabled,.btn-primary:disabled:hover{opacity:1;background:var(--sheet-2);border-color:var(--rule);color:var(--ink-3);font-weight:500}
+.btn-ghost:disabled:hover{border-color:transparent;background:transparent}
+.btn:active:not(:disabled),.chip:active,.x-btn:active{transform:translateY(1px)}
+.btn-sm{height:30px;padding:0 11px;font-size:var(--fs-sm)}
+.chip{border:1px solid var(--rule);background:var(--sheet-2);border-radius:999px;padding:3px 12px;font-family:var(--font-mono);font-size:var(--fs-sm);cursor:pointer;color:var(--ink-2)}
+.chip:hover{border-color:var(--layout-line);color:var(--layout)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:var(--r);padding:2px;background:var(--sheet-2);flex-wrap:wrap}
+.seg button{border:0;background:transparent;padding:4px 12px;border-radius:calc(var(--r) - 2px);font-size:var(--fs-sm);cursor:pointer;color:var(--ink-2);white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);font-weight:700;box-shadow:var(--shadow-sm)}
+.seg.mono button{font-family:var(--font-mono)}
+.sup{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-xs);font-weight:500;padding:1px 8px 1px 5px;border-radius:var(--r-sm);white-space:nowrap;background:var(--slip-xx);color:var(--slip-xx-ink);line-height:20px}
+.sup::before{content:"";width:4px;height:14px;background:radial-gradient(circle,currentColor 1.3px,transparent 1.7px) 0 1px/4px 6px repeat-y;opacity:.5}
+.sup-hh{background:var(--slip-hh);color:var(--slip-hh-ink)}
+.sup-sk{background:var(--slip-sk);color:var(--slip-sk-ink)}
+.sup-zf{background:var(--slip-zf);color:var(--slip-zf-ink)}
+.sup-zm{background:var(--slip-zm);color:var(--slip-zm-ink)}
+.src{display:inline-block;font-size:var(--fs-2xs);border-radius:var(--r-sm);padding:0 6px;border:1px solid var(--rule);color:var(--ink-3);white-space:nowrap;line-height:18px;font-family:var(--font-ui)}
+.src-real{border-color:transparent;padding-inline:0}
+.src-manual{border-color:var(--layout-line);color:var(--layout)}
+.pill{display:inline-block;font-size:var(--fs-2xs);font-weight:700;border-radius:999px;padding:0 8px;white-space:nowrap;line-height:19px}
+.pill-done{background:var(--ok-soft);color:var(--ok)}
+.pill-pending{background:var(--warn-soft);color:var(--warn)}
+.pill-run{background:var(--layout-soft);color:var(--layout)}
+.fam{font-size:var(--fs-xs);color:var(--ink-3);margin-left:6px;font-weight:400}
+
+/* ---------- lookup ---------- */
+.lookup{display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);gap:18px}
+.q-panel{padding:22px;display:flex;flex-direction:column;gap:18px}
+.q-label{font-size:var(--fs-sm);font-weight:700;color:var(--ink-2);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.q-box{display:flex;align-items:center;gap:10px;border:1.5px solid var(--ink);border-radius:var(--r);padding:5px 5px 5px 14px;background:var(--sheet)}
+.q-box:focus-within{border-color:var(--layout);box-shadow:0 0 0 4px var(--layout-soft)}
+.q-box > svg{width:22px;height:22px;flex:none;fill:none;stroke:var(--ink-3);stroke-width:1.7;stroke-linecap:round}
+.q-box input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:var(--font-mono);font-size:clamp(var(--fs-lg),2.3vw,var(--fs-2xl));font-weight:500;padding-block:9px;letter-spacing:.01em}
+.q-box input::placeholder{color:var(--ink-3);font-weight:400}
+.q-box .btn{height:46px;padding:0 20px;font-size:var(--fs-md)}
+.examples{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--sheet-2)}
+.dro-c{padding:10px 14px 11px;display:flex;flex-direction:column;gap:1px;border-left:1px solid var(--rule);min-width:0}
+.dro-c:first-child{border-left:0}
+.dro-k{display:flex;gap:6px;align-items:baseline;font-size:var(--fs-xs);color:var(--ink-3)}
+.dro-k b{font-family:var(--font-display);font-weight:700;color:var(--layout);font-size:var(--fs-sm);letter-spacing:.1em}
+.dro-v{font-family:var(--font-display);font-weight:600;font-size:var(--fs-3xl);line-height:1.08;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dro-v.is-empty{color:var(--ink-3);font-weight:500}
+.dro-s{font-size:var(--fs-xs);color:var(--ink-3);font-family:var(--font-mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dro-s.is-need{color:var(--layout)}
+.allow{display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;font-size:var(--fs-sm);color:var(--ink-2)}
+
+.vp{position:relative;padding:18px 20px 18px;display:flex;flex-direction:column;gap:10px;background-color:var(--sheet);background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:20px 20px;background-position:-1px -1px}
+.vp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.vp-tag{font-family:var(--font-display);font-weight:600;letter-spacing:.18em;font-size:var(--fs-xs);color:var(--layout);text-transform:uppercase}
+.vp-title{font-weight:700;font-size:var(--fs-lg);line-height:1.4}
+.vp-title .mono{font-weight:500;font-size:var(--fs-md);color:var(--ink-2);margin-left:6px}
+.vp-triad{width:44px;height:40px;flex:none;color:var(--ink-3)}
+.vp-triad text{font:600 9px var(--font-display);fill:var(--ink-3);letter-spacing:.05em}
+.vp-triad path{stroke:currentColor;fill:none;stroke-width:1.2}
+.iso{display:block;width:100%;height:auto;max-height:300px}
+.iso-hidden line{stroke:var(--iso-edge);stroke-opacity:.4;stroke-dasharray:3 3;stroke-width:1}
+.iso-stock polygon{stroke:var(--iso-edge);stroke-width:1.1;stroke-linejoin:round}
+.iso-stock .f-t{fill:var(--iso-top)}
+.iso-stock .f-l{fill:var(--iso-left)}
+.iso-stock .f-r{fill:var(--iso-right)}
+.iso-stock.is-glass polygon{fill-opacity:.46}
+.iso-part polygon{stroke:var(--layout);stroke-width:1.3;stroke-linejoin:round;fill:var(--layout)}
+.iso-part .f-t{fill-opacity:.5}
+.iso-part .f-l{fill-opacity:.72}
+.iso-part .f-r{fill-opacity:.9}
+.iso-part.is-alone polygon{fill-opacity:.1;stroke-dasharray:5 4}
+.iso-lab text{font:500 var(--fs-xs) var(--font-mono);fill:var(--ink-2)}
+.vp-legend{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--ink-2)}
+.vp-legend .mono{font-size:var(--fs-xs)}
+.sw{width:11px;height:11px;border-radius:var(--r-sm);display:inline-block;vertical-align:-1px;margin-right:6px}
+.sw-stock{background:var(--iso-left);border:1px solid var(--iso-edge)}
+.sw-part{background:var(--layout)}
+.vp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--rule);padding-top:12px;gap:12px}
+.stat-v{font-family:var(--font-display);font-size:var(--fs-2xl);font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stat-v small{font-size:var(--fs-sm);color:var(--ink-3);margin-left:2px;font-weight:500}
+.vp-empty{position:absolute;inset:auto 20px 22px 20px;text-align:center;color:var(--ink-3);font-size:var(--fs-sm)}
+
+/* ---------- hits ---------- */
+.results{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 14px;flex-wrap:wrap;margin-top:6px}
+.sec-head h2{font-size:var(--fs-lg);font-weight:700;margin:0}
+.sec-head .sub{color:var(--ink-3);font-size:var(--fs-xs)}
+.hits{display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:var(--r-lg);background:var(--sheet);overflow:hidden}
+.hit{display:grid;grid-template-columns:34px minmax(0,1.3fr) minmax(0,1.45fr) minmax(0,1fr) minmax(0,.95fr) auto;grid-template-areas:"rank mat dims util price act";gap:16px;align-items:center;padding:14px 18px;border-top:1px solid var(--rule-2);cursor:pointer}
+.hit:first-child{border-top:0}
+.hit:hover{background:var(--sheet-2)}
+.hit.is-sel{background:var(--layout-soft)}
+.hits.is-list .hit{grid-template-columns:minmax(0,1.3fr) minmax(0,1.45fr) minmax(0,1fr) minmax(0,.95fr) auto;grid-template-areas:"mat dims util price act"}
+.hits.is-list .hit-rank{display:none}
+.hit-rank{grid-area:rank;font-family:var(--font-display);font-size:var(--fs-2xl);font-weight:600;color:var(--ink-3);line-height:1}
+.hit.is-best .hit-rank{color:var(--layout)}
+.hit-mat{grid-area:mat;min-width:0;display:flex;flex-direction:column;gap:4px}
+.mat-name{font-weight:700;font-size:var(--fs-md);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.best-badge{font-size:var(--fs-2xs);font-weight:700;color:var(--layout-ink);background:var(--layout);border-radius:var(--r-sm);padding:0 6px;line-height:18px}
+.hit-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hit-dims{grid-area:dims;min-width:0}
+.dg{display:flex;align-items:flex-start;gap:7px;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.dg .d{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3}
+.dg .d b{font-weight:500;font-size:var(--fs-md)}
+.dg .d em{font-style:normal;font-size:var(--fs-xs);color:var(--ok)}
+.dg .d em.is-neg{color:var(--bad);font-weight:600}
+.dg .d em.is-zero{color:var(--ink-3)}
+.dg > i{font-style:normal;color:var(--ink-3);line-height:1.3;font-size:var(--fs-sm);padding-top:1px}
+.hit-util{grid-area:util;display:flex;flex-direction:column;gap:4px;min-width:0}
+.util-v{font-family:var(--font-display);font-weight:600;font-size:var(--fs-2xl);line-height:1;font-variant-numeric:tabular-nums}
+.util-v small{font-size:var(--fs-sm);color:var(--ink-3);margin-left:1px;font-weight:500}
+.short-v{font-weight:700;color:var(--bad);font-size:var(--fs-sm)}
+.bar{height:4px;border-radius:var(--r-sm);background:var(--rule-2);overflow:hidden;max-width:140px}
+.bar i{display:block;height:100%;background:var(--layout);border-radius:var(--r-sm)}
+.hit-price{grid-area:price;min-width:0}
+.pv{font-weight:500;font-size:var(--fs-md)}
+.hit-act{grid-area:act;justify-self:end}
+.hits .hit.is-short .hit-mat,.hits .hit.is-short .hit-dims .d b,.hits .hit.is-short .hit-price{opacity:.72}
+.more{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:var(--fs-sm);color:var(--ink-2);padding:2px 2px}
+.linkbtn{border:0;background:none;padding:0;color:var(--layout);font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.empty{padding:28px 20px;text-align:center;color:var(--ink-2);border:1px dashed var(--rule);border-radius:var(--r-lg);background:var(--sheet)}
+.empty b{display:block;font-size:var(--fs-lg);color:var(--ink);margin-bottom:4px}
+
+/* ---------- table ---------- */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--rule);border-radius:var(--r-lg);background:var(--sheet)}
+.strip > div{padding:14px 18px;border-left:1px solid var(--rule-2);min-width:0}
+.strip > div:first-child{border-left:0}
+.strip .v{font-family:var(--font-display);font-weight:600;font-size:var(--fs-2xl);line-height:1.15;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip .v small{font-size:var(--fs-md);color:var(--ink-3);font-weight:500;margin-right:3px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{display:flex;align-items:center;gap:8px;border:1px solid var(--rule);background:var(--sheet);border-radius:var(--r);padding:0 10px;height:38px;min-width:0}
+.field:focus-within{border-color:var(--layout);box-shadow:0 0 0 3px var(--layout-soft)}
+.field svg{width:16px;height:16px;flex:none;fill:none;stroke:var(--ink-3);stroke-width:1.7;stroke-linecap:round}
+.field input{border:0;outline:0;background:transparent;min-width:0;width:240px}
+select.sel{height:38px;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet);padding:0 10px}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r-lg);background:var(--sheet)}
+.tbl{width:100%;border-collapse:collapse;min-width:1060px;font-size:var(--fs-sm)}
+.tbl th{text-align:left;font-size:var(--fs-xs);font-weight:700;color:var(--ink-3);padding:10px;border-bottom:1px solid var(--rule);background:var(--sheet-2);white-space:nowrap}
+.tbl th.r,.tbl td.r{text-align:right}
+.th-sort{border:0;background:none;color:inherit;font:inherit;cursor:pointer;display:inline-flex;gap:4px;align-items:center;padding:0}
+.th-sort:hover{color:var(--ink)}
+.th-sort i{font-style:normal;font-size:var(--fs-2xs);opacity:.35}
+th[aria-sort] .th-sort{color:var(--ink)}
+th[aria-sort] .th-sort i{opacity:1;color:var(--layout)}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--rule-2);vertical-align:middle;white-space:nowrap}
+.tbl td.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;text-align:right}
+.tbl td.strong{font-weight:600}
+.tbl tbody tr{cursor:pointer}
+.tbl tbody tr:hover td{background:var(--sheet-2)}
+.tbl tbody tr.is-picked td{background:var(--layout-soft)}
+.tbl tfoot td{font-weight:700;background:var(--sheet-2);border-bottom:0}
+.tbl .c-pick{width:40px;padding-right:0}
+.tbl input[type=checkbox]{width:16px;height:16px;accent-color:var(--layout);cursor:pointer;margin:0;vertical-align:middle}
+.tbl .mat{font-weight:700}
+.tbl td:has(> .mat){white-space:normal;min-width:130px}
+.tbl .btn-sm{padding-inline:8px}
+.tbl tbody td:nth-child(7) .billing-note{display:inline;margin-left:3px} /* price column: unit follows the number */
+.doc{display:flex;gap:6px;align-items:center}
+
+/* ---------- upload ---------- */
+.pipeline{overflow-x:auto}
+.pipeline ol{list-style:none;margin:0;padding:0;display:flex;align-items:center;gap:10px;min-width:560px}
+.pipeline li{flex:1 1 0;display:flex;gap:8px;align-items:center;font-size:var(--fs-xs);color:var(--ink-3);white-space:nowrap}
+.pipeline li:last-child{flex:none}
+.pipeline li:not(:last-child)::after{content:"";flex:1;min-width:12px;height:1px;background:var(--rule)}
+.pipeline li.is-done::after{background:var(--ok)}
+.pipeline .n{width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;display:grid;place-items:center;font-family:var(--font-mono);font-size:var(--fs-2xs);flex:none}
+.pipeline li.is-done{color:var(--ok)}
+.pipeline li.is-done .n{background:var(--ok);color:var(--sheet);border-color:var(--ok)}
+.pipeline li.is-now{color:var(--layout);font-weight:700}
+.pipeline li.is-now .n{background:var(--layout);color:var(--layout-ink);border-color:var(--layout)}
+.upl{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+.upl-left{display:flex;flex-direction:column;gap:12px;min-width:0}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:26px 40px;border:1.5px dashed var(--ink-3);border-radius:var(--r-lg);background:var(--sheet);cursor:pointer;transition:background .15s,border-color .15s}
+.drop::before,.drop::after{content:"";position:absolute;top:12px;bottom:12px;width:10px;background:radial-gradient(circle,var(--paper) 3px,var(--rule) 3.6px,transparent 4.3px) 50% 4px/10px 22px repeat-y}
+.drop::before{left:10px}
+.drop::after{right:10px}
+.drop:hover,.drop.is-over{border-color:var(--layout);background:var(--layout-soft)}
+.drop svg{width:40px;height:40px;fill:none;stroke:var(--layout);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.drop b{font-size:var(--fs-lg)}
+.drop small{color:var(--ink-3);font-size:var(--fs-sm);line-height:1.55}
+.drop .btn{margin-top:6px;pointer-events:none}
+.queue{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.qi{display:grid;grid-template-columns:58px minmax(0,1fr);gap:12px;align-items:center;padding:9px;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet);cursor:pointer;text-align:left;width:100%}
+.qi:hover{border-color:var(--ink-3)}
+.qi.is-sel{border-color:var(--layout);box-shadow:0 0 0 3px var(--layout-soft)}
+.qi-th{width:58px;height:40px;border-radius:var(--r-sm);object-fit:cover;object-position:top left;background:var(--sheet-2);border:1px solid var(--rule-2);display:grid;place-items:center;font:600 var(--fs-2xs) var(--font-mono);color:var(--ink-3)}
+.qi-body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.qi-name{font-size:var(--fs-sm);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qi-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.qi-prog{height:3px;background:var(--rule-2);border-radius:var(--r-sm);overflow:hidden}
+.qi-prog i{display:block;height:100%;background:var(--layout);transition:width .45s ease}
+.review{padding:20px;display:flex;flex-direction:column;gap:16px}
+.rv-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.rv-title{font-weight:700;font-size:var(--fs-lg);word-break:break-all}
+.rv-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0;border-radius:var(--r)}
+.fld.wide{grid-column:1/-1}
+.fld label{display:flex;align-items:center;gap:8px;font-size:var(--fs-xs);font-weight:700;color:var(--ink-2)}
+.conf{margin-left:auto;font-family:var(--font-mono);font-size:var(--fs-2xs);font-weight:500}
+.conf.hi{color:var(--ok)}
+.conf.mid{color:var(--ink-3)}
+.conf.lo{color:var(--warn);font-weight:600}
+.inp{height:38px;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet);padding:0 10px;width:100%;min-width:0;font-family:var(--font-mono);font-size:var(--fs-md)}
+.inp:focus{border-color:var(--layout);outline:0;box-shadow:0 0 0 3px var(--layout-soft)}
+.fld.is-hot .inp{border-color:var(--layout)}
+.fld.is-hot label{color:var(--layout)}
+.fld.is-err .inp{border-color:var(--bad)}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.affix{display:flex;align-items:center;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet);overflow:hidden}
+.affix b{font-size:var(--fs-xs);color:var(--ink-3);padding:0 0 0 10px;font-weight:500}
+.affix .inp{border:0;height:36px}
+.affix:focus-within{border-color:var(--layout);box-shadow:0 0 0 3px var(--layout-soft)}
+.fld.is-hot .affix{border-color:var(--layout)}
+.calc{font-size:var(--fs-xs);color:var(--ink-3);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.calc .pill{font-weight:600}
+.rv-note{font-size:var(--fs-sm);color:var(--ink-2);background:var(--warn-soft);border-radius:var(--r);padding:10px 12px;line-height:1.6}
+.rv-note.is-ok{background:var(--ok-soft)}
+.rv-err{color:var(--bad);font-size:var(--fs-sm);font-weight:600}
+.rv-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--rule-2);padding-top:14px}
+.rv-busy{display:flex;flex-direction:column;gap:10px;padding:18px;border:1px dashed var(--rule);border-radius:var(--r);color:var(--ink-2);font-size:var(--fs-sm)}
+.skel{height:12px;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--rule-2),var(--sheet-2),var(--rule-2));background-size:200% 100%;animation:sh 1.2s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+
+/* ---------- slip viewer ---------- */
+.slip{margin:0;border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--sheet-2)}
+.slip-in{position:relative}
+.slip img{display:block;width:100%;height:auto;filter:var(--img-filter)}
+.slip-pdf{aspect-ratio:1200/682;max-width:100%;display:grid;place-items:center;color:var(--ink-3);font-size:var(--fs-sm)}
+.box{position:absolute;border:1.5px solid var(--layout);background:color-mix(in srgb,var(--layout) 9%,transparent);border-radius:var(--r-sm);transition:background .15s,box-shadow .15s}
+.box .tag{position:absolute;right:calc(100% + 1px);top:-1.5px}
+.box.is-hot{background:color-mix(in srgb,var(--layout) 26%,transparent);box-shadow:0 0 0 3px color-mix(in srgb,var(--layout) 32%,transparent)}
+.tag{display:inline-grid;place-items:center;min-width:17px;height:17px;padding:0 3px;border-radius:var(--r-sm);background:var(--layout);color:var(--layout-ink);font-family:var(--font-mono);font-size:var(--fs-2xs);font-weight:600;font-style:normal;line-height:1;flex:none}
+.slip-cap{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--ink-3);padding:8px 2px 0}
+
+/* ---------- templates ---------- */
+.tpls{display:flex;flex-direction:column;gap:20px}
+.tpl{padding:22px;display:flex;flex-direction:column;gap:18px}
+.tpl-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 16px}
+.tpl-head h2{margin:0;font-size:var(--fs-xl);font-weight:900;letter-spacing:.03em;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tpl-head .meta{display:flex;gap:16px;flex-wrap:wrap;font-size:var(--fs-sm);color:var(--ink-3)}
+.tpl-head .meta b{color:var(--ink);font-family:var(--font-mono);font-weight:600}
+.tpl-body{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px;align-items:start}
+.tpl-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.tpl-side h3{font-size:var(--fs-xs);font-weight:700;color:var(--ink-3);letter-spacing:.08em;margin:0 0 6px}
+.marks{margin:0;padding-left:18px;color:var(--ink-2);font-size:var(--fs-sm);display:flex;flex-direction:column;gap:2px}
+.fmap{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule-2)}
+.fmap li{display:grid;grid-template-columns:20px 64px minmax(0,1fr);gap:2px 10px;padding:7px 6px;border-bottom:1px solid var(--rule-2);align-items:baseline;border-radius:var(--r-sm)}
+.fmap li.is-hot{background:var(--layout-soft)}
+.fmap .tag{align-self:center}
+.fmap .lbl{font-weight:700;font-size:var(--fs-sm)}
+.fmap .raw{font-family:var(--font-mono);font-size:var(--fs-sm);overflow-wrap:anywhere}
+.fmap .rule{grid-column:3;color:var(--ink-3);font-size:var(--fs-xs)}
+
+/* ---------- drawer & toast ---------- */
+.drawer{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end}
+.drawer-bg{position:absolute;inset:0;background:var(--scrim)}
+.drawer-panel{position:relative;width:min(520px,100%);height:100%;background:var(--sheet);overflow-y:auto;padding-block:calc(env(safe-area-inset-top,0px) + 22px) calc(env(safe-area-inset-bottom,0px) + 28px);padding-inline:24px;box-shadow:var(--shadow);outline:0;animation:slidein .22s ease}
+.drawer-panel.is-wide{width:min(1000px,100%)}
+@keyframes slidein{from{transform:translateX(24px);opacity:.4}}
+.dr-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+.dr-head h2{margin:6px 0 2px;font-size:var(--fs-2xl);font-weight:900;letter-spacing:.02em}
+.dr-head .mono{color:var(--ink-2)}
+.x-btn{width:36px;height:36px;border-radius:var(--r);border:1px solid var(--rule);background:var(--sheet);cursor:pointer;display:grid;place-items:center;flex:none}
+.x-btn:hover{border-color:var(--ink-3)}
+.x-btn svg{width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round}
+.dr-fig{border:1px solid var(--rule);border-radius:var(--r);padding:6px 10px;background-color:var(--sheet);background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);background-size:16px 16px}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);margin:16px 0 0;border-top:1px solid var(--rule-2)}
+.kv dt,.kv dd{padding:8px 0;border-bottom:1px solid var(--rule-2);margin:0}
+.kv dt{color:var(--ink-3);font-size:var(--fs-sm)}
+.kv dd{font-size:var(--fs-md);min-width:0;overflow-wrap:anywhere}
+.kv dd.big{font-family:var(--font-display);font-weight:600;font-size:var(--fs-2xl);line-height:1.2}
+.dr-sec{margin-top:22px;display:flex;flex-direction:column;gap:8px}
+.dr-sec h3{margin:0;font-size:var(--fs-sm);font-weight:700;color:var(--ink-2)}
+.hist{list-style:none;margin:0;padding:0;border-top:1px solid var(--rule-2)}
+.hist li{display:grid;grid-template-columns:92px minmax(0,1fr) auto auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule-2);align-items:center;font-size:var(--fs-sm)}
+.hist .mono{white-space:nowrap}
+.chg-up{color:var(--bad);font-family:var(--font-mono);font-size:var(--fs-xs)}
+.chg-dn{color:var(--ok);font-family:var(--font-mono);font-size:var(--fs-xs)}
+.cmp-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r)}
+.cmp{border-collapse:collapse;width:100%}
+.cmp th,.cmp td{padding:9px 14px;border-bottom:1px solid var(--rule-2);text-align:left;white-space:nowrap;font-size:var(--fs-sm)}
+.cmp thead th{background:var(--sheet-2);font-size:var(--fs-xs);color:var(--ink-3)}
+.cmp tbody th{color:var(--ink-3);font-weight:500;position:sticky;left:0;background:var(--sheet);z-index:1}
+.cmp tr.is-diff td{background:var(--warn-soft)}
+.cmp td.low{color:var(--ok);font-weight:700}
+.cmp td.low::after{content:"最低";font-size:var(--fs-2xs);margin-left:6px;border:1px solid currentColor;border-radius:var(--r-sm);padding:0 4px}
+.cmp-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:var(--fs-xs);color:var(--ink-3);margin:12px 0}
+.cmp-legend i{display:inline-block;width:12px;height:12px;border-radius:var(--r-sm);background:var(--warn-soft);vertical-align:-2px;margin-right:6px;border:1px solid var(--rule)}
+.copy-area{width:100%;min-height:260px;font-family:var(--font-mono);font-size:var(--fs-xs);border:1px solid var(--rule);border-radius:var(--r);padding:10px;background:var(--sheet-2);resize:vertical}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 22px);transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:10px 18px;border-radius:var(--r);font-size:var(--fs-md);font-weight:500;z-index:60;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+
+/* ---------- responsive ---------- */
+@media (max-width:1500px){
+  .main{padding-inline:32px}
+}
+@media (max-width:1180px){
+  .lookup{grid-template-columns:1fr}
+  .tpl-body{grid-template-columns:1fr}
+  .upl{grid-template-columns:1fr}
+  .iso{max-height:260px}
+}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;padding:14px 16px 10px;gap:12px}
+  .nav{flex-direction:row;overflow-x:auto;gap:4px;margin-inline:-4px;padding-bottom:2px}
+  .nav-i{flex:none;padding:8px 12px}
+  .nav-i .count,.nav-i kbd{margin-left:2px}
+  .nav-i kbd{display:none}
+  .rail-foot{display:none}
+  .main{padding-inline:24px;padding-block:24px 64px}
+}
+@media (max-width:720px){
+  .main{padding-inline:16px}
+  .q-panel,.tpl,.review{padding:16px}
+  .q-box .btn{padding:0 14px}
+  .dro{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dro-c.mat{grid-column:1/-1;border-left:0;border-top:1px solid var(--rule)}
+  .dro-v{font-size:var(--fs-2xl)}
+  .hit,.hits.is-list .hit{grid-template-columns:26px minmax(0,1fr) minmax(0,1fr);grid-template-areas:"rank mat act" "rank dims dims" "rank util price";gap:10px 12px;padding:14px}
+  .hits.is-list .hit{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"mat act" "dims dims" "util price"}
+  .hit-rank{font-size:var(--fs-xl);align-self:start}
+  .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .strip > div:nth-child(3){border-left:0}
+  .strip > div:nth-child(n+3){border-top:1px solid var(--rule-2)}
+  .form-grid{grid-template-columns:1fr}
+  .toolbar .field{flex:1 1 100%}
+  .field input{width:100%}
+  .vp-stats .stat-v{font-size:var(--fs-xl)}
+  .drawer-panel{padding-inline:16px}
+  .hist li{grid-template-columns:86px minmax(0,1fr) auto}
+  .hist li .sup{display:none}
+}
+/* ---------- motion ---------- */
+.btn,.chip,.seg button,.nav-i,.x-btn,.qi,.th-sort,.linkbtn,.hit,.tbl tbody td{transition:background-color var(--t),border-color var(--t),color var(--t),box-shadow var(--t),filter var(--t),transform var(--t)}
+.inp,.field,.q-box,.affix,select.sel{transition:border-color var(--t),box-shadow var(--t)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+.tax-review{border:1px solid var(--rule);border-radius:var(--r-lg);padding:16px;margin:16px 0}.tax-preview-card{border:1px solid var(--rule);border-radius:var(--r-lg);padding:16px;margin:12px 0;overflow-wrap:anywhere}.tax-preview-card .form-grid{gap:12px}.tax-preview-card label{display:flex;flex-direction:column;gap:6px}.tax-preview-card label.analysis-check{flex-direction:row;align-items:center}#taxCalculation{font-size:var(--fs-sm);line-height:1.7;margin:12px 0}.analysis-quality.customer_supplied{color:var(--ink-2)}
+</style>
+<link rel="stylesheet" href="demo.css">
+</head><body>
+
+<section class="startup" id="startup" aria-labelledby="startupTitle">
+<div class="panel startup-card"><div class="eyebrow">材料進料帳 · DEMO</div><h1 id="startupTitle">正在準備示範工作台</h1><p id="startupMessage" role="status">載入資料引擎與虛構單據…</p><p class="k">預載資料全為虛構。文件在此瀏覽器內辨識與保存。</p><a class="btn btn-primary" id="openLocalApp" href="">重新載入</a></div></section>
+<div class="connection-notice panel" id="connectionNotice" role="status" aria-live="polite" hidden><strong>瀏覽器資料暫時無法保存</strong><p>請保留此頁與尚未保存的修改，釋放儲存空間後重試。</p><div class="connection-actions"><button class="btn btn-primary" id="retryConnection" type="button">重試</button><button class="btn" id="dismissConnection" type="button">收起提示</button></div></div>
+<div class="app" hidden>
+  <aside class="rail">
+    <div class="brand">
+      <svg viewBox="0 0 34 34" aria-hidden="true"><polygon points="17,3 30,10.5 17,18 4,10.5" fill="var(--rail-accent)"/><path d="M4 10.5v13L17 31l13-7.5v-13M17 18v13" fill="none" stroke="var(--rail-fg)" stroke-width="1.6" stroke-linejoin="round"/><path d="M17 3 30 10.5 17 18 4 10.5Z" fill="none" stroke="var(--rail-fg)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+      <div><div class="brand-name">材料進料帳</div><div class="brand-sub">Material intake · Demo</div></div>
+    </div>
+    <nav class="nav" aria-label="功能">
+      <a class="nav-i" href="#search" data-view="search"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span>快速查詢</span><kbd>/</kbd></a>
+      <a class="nav-i" href="#table" data-view="table"><svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/></svg><span>材料總表</span><span class="count" id="cnt-table"></span></a>
+      <a class="nav-i" href="#upload" data-view="upload"><svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14"/></svg><span>上傳單據</span><span class="count is-warn" id="cnt-upload"></span></a>
+      <a class="nav-i" href="#pool" data-view="pool"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 3h9v10H3zM3 7V4h7l2 3h9v3"/></svg><span>待分類池</span><span class="count" id="cnt-pool"></span></a>
+      <a class="nav-i" href="#analysis" data-view="analysis"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M5 16l5-6 4 3 6-9"/></svg><span>行情與價格分析</span></a>
+      <a class="nav-i" href="#templates" data-view="templates"><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="1.5"/><rect x="7" y="7" width="6" height="3"/><rect x="7" y="13" width="10" height="3"/></svg><span>單據範本</span><span class="count">4</span></a>
+    </nav>
+    <div class="rail-foot">
+      <div class="rf-title">Data source</div>
+      <dl class="rf-dl">
+        <dt>原始單據</dt><dd id="cnt-real">0</dd>
+        <dt>待確認</dt><dd id="cnt-demo">0</dd>
+        <dt>供應商</dt><dd id="cnt-manual">0</dd>
+      </dl>
+      <p class="rf-note">DEMO · 文件只存此瀏覽器<br><span id="connection">載入中…</span><br><span id="demoTaskStatus" role="status">預載資料全為虛構</span><br><a class="local-link" href="/api/backup">下載完整備份</a> · <button class="local-link demo-text-button" id="demoRestore" type="button">還原</button><br><button class="local-link demo-text-button" id="demoReset" type="button">重設示範資料</button><input id="demoRestoreFile" type="file" accept=".zip" hidden></p>
+    </div>
+  </aside>
+
+  <main class="main"><div class="demo-banner"><span><b>DEMO</b> 預載資料全為虛構 · 自行上傳內容僅保存在此瀏覽器</span><a href="/assets/demo-a-005.pdf" download>下載虛構單據 ↗</a><details class="demo-mobile-tools"><summary>資料工具</summary><div><a href="/api/backup">下載備份</a><button type="button" data-demo-restore>還原備份</button><button type="button" data-demo-reset>重設示範資料</button><span id="demoMobileTaskStatus" role="status"></span></div></details></div>
+    <!-- ============ 快速查詢 ============ -->
+    <section class="view" id="view-search">
+      <header class="vhead">
+        <div>
+          <div class="eyebrow">Quick lookup · 快速查詢</div>
+          <h1>找最接近的進料尺寸</h1>
+          <p>尺寸分格填寫，材質可直接搜尋或點選。長方體三邊可任意換序；依供應商分組，各顯示最多 3 筆尺寸足夠且體積最小的歷史進料。</p>
+        </div>
+      </header>
+      <div class="lookup">
+        <div class="panel q-panel">
+          <div class="q-label"><span>尺寸與材質</span><span class="k">按 / 開始填寫</span></div>
+          <div class="lookup-modes" role="group" aria-label="查詢方式">
+            <button class="linkbtn is-active" type="button" data-search-mode="structured" aria-pressed="true">尺寸查詢</button>
+            <button class="linkbtn" type="button" data-search-mode="text" aria-pressed="false">文字／單號查詢</button>
+          </div>
+          <form id="lookupForm" class="lookup-form" role="search" aria-label="尺寸與材質查詢" novalidate>
+            <div class="lookup-shape-row"><span class="k">形狀</span><div class="seg" id="searchShape" role="group" aria-label="查詢形狀"><button type="button" data-shape="rect" aria-pressed="true">長方體</button><button type="button" data-shape="round" aria-pressed="false">圓條</button></div><span class="k">單位 mm</span></div>
+            <div class="search-dimensions" id="searchDimensions">
+              <label><span id="dimLabel0">尺寸 1</span><input class="inp" id="searchDim0" data-search-dim="0" type="number" min="0" step="any" inputmode="decimal" placeholder="填入數字" aria-describedby="dimensionHint lookupError"></label>
+              <label><span id="dimLabel1">尺寸 2</span><input class="inp" id="searchDim1" data-search-dim="1" type="number" min="0" step="any" inputmode="decimal" placeholder="填入數字" aria-describedby="dimensionHint lookupError"></label>
+              <label id="searchDimThird"><span id="dimLabel2">尺寸 3</span><input class="inp" id="searchDim2" data-search-dim="2" type="number" min="0" step="any" inputmode="decimal" placeholder="填入數字" aria-describedby="dimensionHint lookupError"></label>
+            </div>
+            <div class="search-hint" id="dimensionHint">三個尺寸可任意換序，按 Tab 換格；全部留白可只查材質。</div>
+            <div class="metal-row"><span class="k">金屬分類（可跳過）</span><div id="metalFilters" class="metal-filters" role="group" aria-label="金屬分類"><button type="button" class="chip" data-metal="all" aria-pressed="true">全部</button></div></div>
+            <div class="material-picker" id="materialPicker">
+              <label class="material-label" for="materialSearch">材質牌號 <span class="k">來自已確認單據</span></label>
+              <div class="material-input-wrap"><input class="inp" id="materialSearch" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="materialList" aria-describedby="materialHint lookupError" autocomplete="off" spellcheck="false" placeholder="搜尋或選擇材質，不選則不限"><button class="material-control" id="clearMaterial" type="button" aria-label="清除材質" hidden>×</button><button class="material-control" id="toggleMaterials" type="button" aria-label="展開材質選單" aria-expanded="false" aria-controls="materialList">⌄</button>
+              <ul id="materialList" class="material-list" role="listbox" aria-label="材質牌號選項" hidden></ul></div>
+              <div class="search-hint" id="materialHint">可打字篩選，再點選或按 Enter 選取。</div>
+            </div>
+            <div class="lookup-buttons"><button class="btn" id="clearLookup" type="button">清除條件</button><button class="btn btn-primary" type="submit">查詢</button></div>
+          </form>
+          <form class="q-box" id="qForm" role="search" aria-label="文字或單號查詢" hidden>
+            <input id="q" name="q" autocomplete="off" spellcheck="false" aria-label="文字或單號" placeholder="輸入單號、材質或原有尺寸格式">
+            <button class="btn btn-primary" type="submit">查詢</button>
+          </form>
+          <div id="lookupError" class="lookup-error" role="status" aria-live="polite" hidden></div>
+          <div class="dro" id="dro" aria-live="polite"></div>
+          <div class="allow">
+            <span>加工餘量（每邊）</span>
+            <div class="seg mono" id="allowSeg" role="group" aria-label="加工餘量">
+              <button type="button" data-allow="0" aria-pressed="true">0</button>
+              <button type="button" data-allow="0.5" aria-pressed="false">0.5</button>
+              <button type="button" data-allow="1" aria-pressed="false">1.0</button>
+              <button type="button" data-allow="2" aria-pressed="false">2.0</button>
+            </div>
+            <span class="k">mm，兩側都會加上</span>
+          </div>
+        </div>
+        <div class="panel vp" id="vp"></div>
+      </div>
+      <div class="results" id="results"></div>
+    </section>
+
+    <!-- ============ 材料總表 ============ -->
+    <section class="view" id="view-table" hidden>
+      <header class="vhead">
+        <div>
+          <div class="eyebrow">Ledger · 材料總表</div>
+          <h1>材料總表</h1>
+          <p>所有出貨單擷取後的進料明細。點一列看明細與同規格歷史價，勾選 2 至 4 列可以並排比對。</p>
+        </div>
+        <div class="vhead-act">
+          <button class="btn" id="copyBtn" type="button"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>複製到 Excel</button>
+          <a class="btn" href="/api/export.csv">匯出 CSV</a>
+          <button class="btn btn-primary" id="cmpBtn" type="button" disabled>並排比對</button>
+        </div>
+      </header>
+      <div class="strip" id="strip"></div>
+      <div class="toolbar">
+        <div class="field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><input id="tFilter" placeholder="篩選：材質、單號、尺寸…" aria-label="篩選總表"></div>
+        <div class="seg" id="supSeg" role="group" aria-label="供應商">
+          <button type="button" data-sup="all" aria-pressed="true">全部供應商</button>
+          <button type="button" data-sup="hh" aria-pressed="false">示範鋁材一廠</button>
+          <button type="button" data-sup="sk" aria-pressed="false">示範鋼材二廠</button>
+        </div>
+        <select class="sel" id="famSel" aria-label="材質分類">
+          <option value="all">所有材質</option>
+          <option value="鋁合金">鋁合金</option>
+          <option value="碳鋼">碳鋼</option>
+          <option value="合金鋼">合金鋼</option>
+          <option value="模具鋼">模具鋼</option>
+          <option value="不鏽鋼">不鏽鋼</option>
+          <option value="材質未列">材質未列</option>
+          <option value="其他">其他</option>
+        </select>
+      </div>
+      <div class="notice"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span>僅顯示已確認的歷史採購資料，不代表目前庫存。尺寸統一換算為 mm；整單總計與明細金額分開保存。</span></div>
+      <div class="tbl-wrap"><table class="tbl" id="tbl"></table></div>
+    </section>
+
+    <!-- ============ 上傳單據 ============ -->
+    <section class="view" id="view-upload" hidden>
+      <header class="vhead">
+        <div>
+          <div class="eyebrow">Intake · 上傳單據</div>
+          <h1>上傳出貨單</h1>
+          <p>上傳出貨單照片或掃描檔。系統先判斷是哪一家的範本，再擷取供應商、尺寸、材質、數量、單價與總金額，辨識在此瀏覽器完成，你確認後寫入總表。</p>
+        </div>
+        <div class="vhead-act intake-controls">
+          <button class="btn" id="uploadDocument" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 14v4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V14"/></svg>上傳單據</button>
+          <button class="btn btn-ghost" type="button" data-tax-preview>稅別更新預覽</button><button class="btn" id="toggleQueue" type="button" aria-controls="intakeQueue" aria-expanded="false">切換單據 <span id="intakeCount" class="mono">0</span></button>
+        </div>
+      </header>
+      <div class="intake-progress" id="intakeProgress" role="status" aria-live="polite"></div>
+      <div class="pipeline" id="pipeline"></div>
+      <div class="upl">
+        <div class="intake-queue" id="intakeQueue" hidden>
+          <button class="queue-backdrop" type="button" data-close-queue aria-label="關閉單據清單"></button>
+          <aside class="upl-left" aria-label="單據清單">
+          <div class="queue-heading"><h2>單據清單</h2><button class="btn btn-sm" type="button" data-close-queue>收合清單</button></div>
+          <label class="drop" id="drop" for="file">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M14 6h15l9 9v27H14z"/><path d="M29 6v9h9"/><path d="M26 36V22m-6 6 6-6 6 6"/></svg>
+            <b>拖曳出貨單到這裡</b>
+            <small>JPG、PNG、HEIC、PDF，可一次多張<br>單份最多 50 MB，PDF 最多 20 頁<br>支援示範鋁材一廠、示範鋼材二廠、示範鋁業三廠與示範金屬四廠</small>
+            <span class="btn btn-sm">選擇檔案</span>
+          </label>
+          <input type="file" id="file" accept="image/*,application/pdf" multiple hidden>
+          <div class="sec-head"><h2>辨識佇列</h2><span class="sub" id="qCount"></span></div>
+          <label class="queue-search-label" for="queueSearch">搜尋單據</label>
+          <input class="inp" id="queueSearch" type="search" placeholder="單號、檔名或供應商" autocomplete="off">
+          <div class="queue-filters" id="queueFilters" role="group" aria-label="單據狀態篩選"></div>
+          <label class="queue-analysis-filter"><input type="checkbox" id="queueAnalysisOnly">只看需核對／補充</label>
+          <div class="k" id="queueMatches"></div>
+          <ul class="queue" id="queue"></ul>
+          </aside>
+        </div>
+        <div class="panel review linked" id="review"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-pool" hidden>
+      <header class="vhead"><div><div class="eyebrow">Document organization · 單據整理</div><h1>待分類池</h1><p>整張保存其他類別單據。材料資料在此停用；移回材料區並完成整張確認後，才重新列入查詢與分析。</p></div></header>
+      <div class="pool-filters"><div class="seg" id="poolTabs" role="group" aria-label="單據存放區"><button type="button" data-pool-tab="review" aria-pressed="true">待分類池</button><button type="button" data-pool-tab="trash" aria-pressed="false">垃圾桶</button></div><label>類別<select class="inp" id="poolCategory"></select></label><label>搜尋<input class="inp" id="poolSearch" type="search" placeholder="單號、檔名、供應商或備註"></label></div>
+      <p class="k" id="poolMatches" role="status"></p>
+      <div class="pool-workspace"><ul class="queue panel" id="poolList" aria-label="待分類單據清單"></ul><section class="panel" id="poolDetail" aria-label="分類單據內容"></section></div>
+    </section>
+    <!-- ============ 範本 ============ -->
+    <section class="view" id="view-templates" hidden>
+      <header class="vhead">
+        <div>
+          <div class="eyebrow">Templates · 單據範本</div>
+          <h1>單據範本</h1>
+          <p>支援示範鋁材一廠、示範鋼材二廠、示範鋁業三廠與示範金屬四廠四家單據。對照原單與欄位規則；未註明尺寸單位預設 mm、計價單位預設件，材質與價格未列保留空白。</p>
+        </div>
+        <div class="vhead-act"><button class="btn" type="button" disabled>新增範本（下一階段）</button></div>
+      </header>
+      <div class="tpls" id="tpls"></div>
+    </section>
+    <section class="view" id="view-analysis" hidden>
+      <header class="vhead"><div><div class="eyebrow">Price intelligence · 價格觀察</div><h1>行情與價格分析</h1><p>以 S50C 現有單據為主，觀察各家供應商含稅、含加工費的成交公斤價。鋁、鋼分開比較，供應商逐筆顯示，國際行情保留曲線。</p></div><div class="vhead-act"><button class="btn btn-ghost" type="button" data-tax-preview>稅別更新預覽</button><button class="btn" type="button" id="aReload">重新載入</button><a class="btn" id="aExport" href="/api/analysis/export.csv">匯出分析 CSV</a></div></header>
+      <div class="seg analysis-tabs" role="group" aria-label="價格分析頁籤"><button type="button" data-a-tab="compare" aria-pressed="true">行情比較</button><button type="button" data-a-tab="quotes" aria-pressed="false">報價紀錄</button><button type="button" data-a-tab="settings" aria-pressed="false">資料設定</button></div>
+      <div id="aLoadStatus" class="k" role="status" aria-live="polite"></div><div id="aError" class="net-error" role="alert" hidden></div>
+      <div id="aCompare" class="analysis-stack">
+        <section class="panel analysis-comparison-bar" aria-label="逐筆價格比較選擇">
+          <div class="analysis-toolbar"><div><b>逐筆價格比較</b> <span id="aCompareCount" role="status" aria-live="polite" tabindex="-1">已選 0／4 筆</span></div><div class="analysis-comparison-actions"><button class="btn btn-sm" type="button" id="aCompareClear" data-ac-clear disabled>清空</button><button class="btn btn-primary btn-sm" type="button" id="aCompareOpen" data-ac-open disabled>並排比較</button></div></div>
+          <ul id="aComparePicked" class="analysis-comparison-picked"></ul><p class="k">從圖點來源明細或分析清單加入 2～4 筆可分析資料。</p><p class="k" id="aCompareMessage" role="status" aria-live="polite"></p>
+        </section>
+        <form id="aFilters" class="panel analysis-filters">
+          <label>金屬分類<select class="inp" name="metal"><option value="steel">鋼</option><option value="aluminum">鋁</option></select></label><label>材質牌號<select class="inp" name="grade"><option value="">全部牌號（分開繪圖）</option><option value="S50C" selected>S50C</option></select></label><label>供應商<select class="inp" name="sup"><option value="">全部供應商</option></select></label><label>價格口徑<select class="inp" name="price_basis"><option value="gross">含稅成交公斤價（含加工費）</option><option value="original">原單單價換算（舊口徑）</option><option value="material">未稅純材料費（嚴格核對）</option></select></label>
+          <label>開始日期<input class="inp" name="start" type="date"></label><label>結束日期<input class="inp" name="end" type="date"></label><label class="analysis-span-2">國際行情<select class="inp" name="market"><option value="">尚無鋼價，先顯示採購資料</option></select></label>
+          <details class="analysis-wide analysis-more" id="aMoreFilters"><summary>更多條件<span class="analysis-more-count" id="aMoreCount" hidden></span><span class="k">觀察資料、形狀、重量來源、彙整頻率、匯率、精確尺寸與採購條件</span></summary><div class="analysis-more-fields">
+          <label>觀察資料<select class="inp" name="kind"><option value="invoice">成交單據（出貨日期）</option><option value="quote">報價／詢價（報價日期）</option></select></label><label>形狀<select class="inp" name="shape"><option value="">全部形狀</option><option value="rect">長方體</option><option value="round">圓條</option></select></label><label>重量來源<select class="inp" name="weight_source"><option value="">實重與理論重量（分別標示）</option><option value="actual">實際重量</option><option value="theoretical">理論重量</option></select></label><label>行情彙整頻率<select class="inp" name="frequency"><option value="monthly">每月</option><option value="weekly">每週（需日行情）</option><option value="daily">每日（需日行情）</option></select></label><label>匯率來源<select class="inp" name="fx_source"><option value="cbc">中央銀行（cbc）</option></select></label><label>精確尺寸（選填，mm）<input class="inp" name="dims_text" placeholder="例：8,17,81；保留尺寸順序"></label>
+          <fieldset class="analysis-wide analysis-purchase"><legend>採購條件（選填）</legend><div class="analysis-purchase-fields">
+            <label>採購數量最小值<input class="inp" name="qty_min" type="number" min="0" step="any" placeholder="不限" data-a-range></label>
+            <label>採購數量最大值<input class="inp" name="qty_max" type="number" min="0" step="any" placeholder="不限" data-a-range></label>
+            <label>數量單位<select class="inp" name="qty_unit"><option value="件">件</option></select><small>只在填入採購數量範圍時生效</small></label>
+            <label>單件重量最小值（公斤）<input class="inp" name="piece_weight_min" type="number" min="0" step="any" placeholder="不限" data-a-range></label>
+            <label>單件重量最大值（公斤）<input class="inp" name="piece_weight_max" type="number" min="0" step="any" placeholder="不限" data-a-range></label>
+            <label>供料／熱處理狀態<select class="inp" name="temper_filter"><option value="">不限</option><option value="missing">未列（只表示資料未列）</option></select></label>
+          </div><p class="k">單件重量是每一件材料的重量，不是整筆採購重量；沿用實重或理論重量的既有分析結果。「未列」不代表已確認具有相同狀態。相近條件不等於完全相同規格，不推算數量折扣或調整原單價格。</p></fieldset>
+          </div></details>
+          <div class="analysis-wide analysis-filter-actions"><button class="btn" type="reset">清除條件</button><button class="btn btn-primary" type="submit">更新分析</button></div>
+        </form>
+        <p id="aFilterNotice" class="k" role="status" hidden></p>
+        <p id="aPurchaseHint" class="k" role="status" hidden></p>
+        <div id="aStats" class="analysis-stats" aria-live="polite"></div>
+        <div class="panel analysis-chart-panel">
+          <div class="analysis-toolbar"><div class="seg" aria-label="分析視圖"><button type="button" data-a-view="trend" aria-pressed="true">價格趨勢</button><button type="button" data-a-view="fixed" aria-pressed="false">固定規格</button><button type="button" data-a-view="scatter" aria-pressed="false">採購量與尺寸</button></div><span class="k">NT$／公斤 · 逐筆價格</span></div>
+          <p id="aAxisNote" class="analysis-axis-note" hidden></p>
+          <form id="aFixed" class="analysis-fixed" hidden><p class="analysis-wide">固定一組採購條件比較價格，不換序、不推算數量折扣；缺少供料／熱處理狀態資料可於下方「分析補充」填寫。</p><label>牌號<select class="inp" name="grade" required><option value="">請選擇</option></select></label><label>供料／熱處理狀態<input class="inp" name="temper" placeholder="例：退火、正火、T6" required></label><label>形狀<select class="inp" name="shape"><option value="rect">長方體</option><option value="round">圓條</option></select></label><label>尺寸（mm，依原單順序）<input class="inp" name="dims" placeholder="例：8,17,81" required></label><label>固定數量<input class="inp" name="qty" type="number" min="0.001" step="any" required></label><label>數量單位<input class="inp" name="unit" value="件" required></label><button class="btn btn-primary" type="submit">比較此固定規格</button></form>
+          <div id="aChartCaption" class="analysis-caption"></div><div id="aChart" class="analysis-chart"></div><div id="aLegend" class="analysis-legend"></div>
+          <div id="aPoint" class="analysis-point" role="status" aria-live="polite">點選圖上的資料點查看來源。</div>
+        </div>
+        <div class="notice" id="aBasisHint"></div>
+        <section class="panel analysis-chart-panel" id="aProblems" tabindex="-1"><h2>分析資料與待核對項目</h2><div id="aListFilters" class="analysis-list-filters" role="group" aria-label="分析資料狀態"></div><div id="aCategories" class="analysis-list-filters" role="group" aria-label="問題主因分類"></div><p id="aQualityHint" class="k" aria-live="polite"></p><div class="analysis-table-wrap" id="aTableScroll"><table class="analysis-table"><thead><tr><th>日期／單號</th><th>供應商／材質</th><th>尺寸／數量</th><th>重量</th><th id="aCostHeader">換算金額／公斤價</th><th>分析狀態</th><th>來源與補充</th></tr></thead><tbody id="aRows"></tbody></table></div></section>
+      </div>
+      <div id="aQuotes" class="analysis-stack" hidden>
+        <div class="notice">報價與成交資料分開繪圖。每次詢價新增一筆，價格不變或未成交也可保存。金額以新臺幣紀錄；原始附件只保存在此瀏覽器。</div>
+        <form id="aQuoteForm" class="panel analysis-form"><h2 class="analysis-wide">新增報價觀察</h2>
+          <label>供應商<select class="inp" name="sup" required></select></label><label>報價日期<input class="inp" name="date" type="date" required></label><label>有效至（可留白）<input class="inp" name="valid_until" type="date"></label><label>報價單號（可留白）<input class="inp" name="doc"></label>
+          <label>牌號（未列留白）<input class="inp" name="grade" placeholder="S50C、6061、7075"></label><label>供料／熱處理狀態（未列留白）<input class="inp" name="temper" placeholder="例：退火、正火、T6"></label><label>形狀<select class="inp" name="shape"><option value="rect">長方體</option><option value="round">圓條</option></select></label><label>尺寸（mm）<input class="inp" name="dims" placeholder="三邊，或圓條直徑、長度，以逗號分開" required></label>
+          <label>詢價數量<input class="inp" name="qty" type="number" step="any" min="0.001" required></label><label>數量單位<input class="inp" name="unit" value="件" required></label><label>計價依據<select class="inp" name="pricing_basis"><option value="quantity">按數量</option><option value="weight">按重量（公斤）</option></select></label><label>整筆實重（公斤，可留白）<input class="inp" name="weight_kg" type="number" step="any" min="0.001"></label>
+          <label>原單單價（NT$，可留白）<input class="inp" name="price" type="number" step="any" min="0"></label><label>原單材料費（可留白）<input class="inp" name="material_amount" type="number" step="any" min="0"></label><label>整筆加工費（可留白）<input class="inp" name="processing_fee" type="number" step="any" min="0"></label><label>原單明細金額（可留白）<input class="inp" name="amount" type="number" step="any" min="0"></label>
+          <label>上述原單金額的稅別<select class="inp" name="tax_basis"><option value="unknown">未確認</option><option value="pretax">未稅</option><option value="included">含稅（需填稅率）</option></select></label><label>稅率 %（含稅時必填）<input class="inp" name="tax_rate" type="number" step="any" min="0" max="100"></label><label class="analysis-wide analysis-check"><input type="checkbox" name="fee_zero">已確認沒有加工費（空白加工費才視為 0）</label>
+          <label class="analysis-wide">備註<input class="inp" name="note"></label><label class="analysis-wide">附加原始報價（選填，50 MB 內）<input name="attachment" type="file" accept=".pdf,.jpg,.jpeg,.png,.heic,.xlsx,.csv"></label>
+          <div id="aQuoteMessage" class="analysis-wide" role="status"></div><button class="btn btn-primary" type="submit">保存報價紀錄</button>
+        </form>
+        <div class="panel analysis-chart-panel"><div class="analysis-toolbar"><h2>已保存報價</h2><a class="btn" href="/api/analysis/export.csv?kind=quotes">匯出報價 CSV</a></div><div id="aQuoteList"></div></div>
+      </div>
+      <div id="aSettings" class="analysis-stack" hidden>
+        <section class="panel analysis-chart-panel"><div class="analysis-toolbar"><div><h2>公開行情與匯率</h2><p>手動更新 SteelBenchmarker 中國鋼價、世界銀行月鋁價與央行日／月匯率。離線時使用上次快取。</p></div><button class="btn btn-primary" type="button" id="aUpdateMarket">更新行情</button></div><p id="aMarketStatus" role="status"></p><div id="aSources"></div><p class="k">中國熱軋／標準鋼板為一般鋼材出廠參考，並非 S50C 直接報價。首次補入完整可取得歷史，後續更新近期觀測；其他行情仍可透過 CSV 匯入。未分類行情須先明確分類才能使用。按實際觀察日期保存；每月平均只計已公布且有當日匯率的觀測，缺匯率留空，不補每日價格。</p><p class="k"><a href="https://steelbenchmarker.com/history.pdf" target="_blank" rel="noopener">SteelBenchmarker 近期鋼價</a> · <a href="https://www.steelbenchmarker.com/history2.pdf" target="_blank" rel="noopener">歷史鋼價</a> · <a href="https://www.worldbank.org/en/research/commodity-markets" target="_blank" rel="noopener">世界銀行 Pink Sheet</a> · <a href="https://data.gov.tw/dataset/7232" target="_blank" rel="noopener">央行匯率來源（每月為幾何平均）</a></p></section>
+        <form id="aDensity" class="panel analysis-form"><h2 class="analysis-wide">理論重量密度</h2><p class="analysis-wide">長方體／圓條體積 × 密度 × 件數；不使用查詢的加工餘量。僅作分析估算，不改寫單據實重。</p><label>S50C（g/cm³）<input class="inp" name="S50C" type="number" min="1" max="30" step="any" required></label><label>6061（g/cm³）<input class="inp" name="6061" type="number" min="1" max="30" step="any" required></label><label>7075（g/cm³）<input class="inp" name="7075" type="number" min="1" max="30" step="any" required></label><label class="analysis-wide">S50C 密度來源<input class="inp" name="source_S50C" type="url" required></label><label class="analysis-wide">6061 密度來源<input class="inp" name="source_6061" type="url" required></label><label class="analysis-wide">7075 密度來源<input class="inp" name="source_7075" type="url" required></label><button class="btn" type="submit">保存密度設定</button></form>
+        <form id="aImport" class="panel analysis-form"><h2 class="analysis-wide">CSV 匯入</h2><label>資料類型<select class="inp" name="kind"><option value="quotes">報價紀錄</option><option value="market">國際日／月行情</option><option value="fx">日／月匯率</option></select></label><div class="analysis-toolbar"><a class="btn" id="aTemplate" href="/api/analysis/template?kind=quotes">下載空白範本</a></div><p id="aImportHelp" class="analysis-wide k"></p><label class="analysis-wide">CSV 檔案（UTF-8，4 MB 內）<input name="file" type="file" accept=".csv" required></label><label class="analysis-wide analysis-check" id="aReplaceLabel" hidden><input type="checkbox" name="replace">匯入時更新同來源、同期間的既有資料（預覽會顯示重複數量）</label><button class="btn" type="submit">預覽匯入內容</button><div id="aImportPreview" class="analysis-wide"></div><button class="btn btn-primary" id="aImportCommit" type="button" hidden>確認匯入</button></form>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="drawer-bg" data-close></div>
+  <div class="drawer-panel" id="drawerPanel" role="dialog" aria-modal="true" aria-label="明細" tabindex="-1"></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="organizeDialog" class="retry-dialog" aria-labelledby="organizeTitle">
+  <h2 id="organizeTitle">整理單據</h2><p id="organizeName" class="mono"></p><p id="organizeImpact"></p>
+  <div id="organizeCategoryWrap"><label>分類<select class="inp" id="organizeCategory"></select></label><label>備註<textarea class="inp" id="organizeNote" rows="3" maxlength="2000"></textarea></label></div>
+  <p id="organizeError" class="rv-err" role="alert"></p><div class="pool-actions"><button class="btn" id="organizeCancel" type="button">取消</button><button class="btn btn-primary" id="organizeSubmit" type="button">確認整理</button></div>
+</dialog>
+<dialog id="retryDialog" class="retry-dialog" aria-labelledby="retryTitle">
+  <h2 id="retryTitle">重新辨識這份單據？</h2>
+  <p>目前的辨識草稿與人工修改會被新的辨識結果取代，原始檔案會保留。</p>
+  <form method="dialog"><button class="btn" value="cancel">保留目前草稿</button><button class="btn btn-primary" value="retry">確定重新辨識</button></form>
+</dialog>
+
+<script src="boot.js" defer></script>
+
+</body></html>

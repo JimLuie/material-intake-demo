@@ -1,0 +1,9 @@
+.demo-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;padding:10px 14px;border:1px solid var(--rule);border-radius:var(--r);background:var(--sheet-2);color:var(--ink-2);font-size:var(--fs-xs)}
+.demo-banner b{color:var(--layout);letter-spacing:.12em;margin-right:8px;font-family:var(--font-mono)}
+.demo-banner a{color:var(--layout);white-space:nowrap;text-decoration:none}.demo-banner a:hover{text-decoration:underline}
+.demo-text-button{padding:0;background:none;border:0;font:inherit;cursor:pointer;text-decoration:underline;color:var(--rail-accent)}
+.rf-note{line-height:1.7}.brand-name{white-space:nowrap}#demoTaskStatus{display:inline-block;font-size:11px;line-height:1.5;margin:4px 0;color:var(--rail-dim)}
+@media(max-width:700px){.demo-banner{align-items:flex-start;flex-direction:column;gap:5px;margin-top:4px}.demo-banner span{max-width:100%}}
+
+.demo-mobile-tools{display:none}.demo-mobile-tools summary{cursor:pointer;color:var(--ink-2)}.demo-mobile-tools>div{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}.demo-mobile-tools button{background:none;border:0;padding:0;color:var(--layout);cursor:pointer;font:inherit}.demo-mobile-tools span{flex-basis:100%}
+@media(max-width:980px){.demo-mobile-tools{display:block;flex-basis:100%}.demo-banner{flex-wrap:wrap}}

@@ -1,0 +1,31 @@
+{
+  "name": "material-intake-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "材料進料帳：以虛構資料展示瀏覽器 OCR、材料核對與價格分析。",
+  "license": "MIT",
+  "author": "JimLuie",
+  "type": "module",
+  "engines": {"node": ">=22.13.0"},
+  "repository": {"type": "git", "url": "https://github.com/JimLuie/material-intake-demo.git"},
+  "homepage": "https://material-intake-demo.dewy-gleam-7201.chatgpt.site",
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "prepare:demo": "node scripts/prepare-demo.mjs",
+    "test": "node scripts/test-js.mjs",
+    "test:core": "node scripts/test-python.mjs",
+    "test:wasm": "node tests/test_wasm.mjs",
+    "test:smoke": "node scripts/smoke.mjs",
+    "audit:release": "node scripts/audit-release.mjs"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "libheif-js": "1.23.5",
+    "pako": "1.0.11",
+    "pdfjs-dist": "6.4.299",
+    "pyodide": "314.0.7",
+    "tesseract.js": "6.0.1",
+    "tesseract.js-core": "6.1.2",
+    "utif": "3.1.0"
+  }
+}
